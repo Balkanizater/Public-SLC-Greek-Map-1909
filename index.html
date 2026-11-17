@@ -28,6 +28,9 @@
   .legend label { display: block; cursor: pointer; margin: 3px 0; }
   .legend .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
   .legend .line-swatch { display: inline-block; width: 16px; height: 3px; margin-right: 6px; vertical-align: middle; }
+  .legend .line-swatch-dashed { display: inline-block; width: 16px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 3px dashed #975a16; }
+  .legend .sub-legend { margin: 2px 0 2px 19px; font-size: 12px; color: #555; }
+  .legend .sub-legend .swatch { width: 9px; height: 9px; }
   .legend .note { font-size: 11px; color: #666; margin-top: 8px; font-style: italic; }
   .leaflet-popup-content { font-size: 13px; }
   .leaflet-popup-content b { font-size: 14px; }
@@ -142,6 +145,26 @@ livedLayer.addTo(map);
 const allPoints = L.featureGroup([livedLayer, workedLayer, thirdSpacesLayer]);
 map.fitBounds(allPoints.getBounds().pad(0.08));
 
+const thirdSpaceLabels = { church: 'Church', civic: 'Civic', store: 'Store', restaurant: 'Restaurant' };
+const thirdSpaceCounts = {};
+THIRD_SPACES.features.forEach(f => {
+  const c = f.properties.category;
+  thirdSpaceCounts[c] = (thirdSpaceCounts[c] || 0) + 1;
+});
+const thirdSpaceSubLegend = Object.keys(thirdSpaceLabels)
+  .filter(c => thirdSpaceCounts[c])
+  .map(c => '<div class="sub-legend"><span class="swatch" style="background:' + thirdSpaceColors[c] + '"></span>' +
+    thirdSpaceLabels[c] + ' (' + thirdSpaceCounts[c] + ')</div>')
+  .join('');
+
+const railModeCounts = { transit: 0, steam: 0 };
+RAIL_LINES.features.forEach(f => {
+  railModeCounts[f.properties.mode.includes('steam') ? 'steam' : 'transit']++;
+});
+const railSubLegend =
+  (railModeCounts.transit ? '<div class="sub-legend"><span class="line-swatch" style="background:#2f855a"></span>Streetcar / interurban (' + railModeCounts.transit + ')</div>' : '') +
+  (railModeCounts.steam ? '<div class="sub-legend"><span class="line-swatch-dashed"></span>Steam railroad (' + railModeCounts.steam + ')</div>' : '');
+
 const legend = L.control({ position: 'topright' });
 legend.onAdd = function() {
   const div = L.DomUtil.create('div', 'legend');
@@ -149,8 +172,10 @@ legend.onAdd = function() {
     '<h3>Greeks of 1909 Salt Lake Valley</h3>' +
     '<label><input type="checkbox" id="toggle-lived" checked> <span class="swatch" style="background:#2b6cb0"></span>Where they lived (' + LIVED.features.length + ')</label>' +
     '<label><input type="checkbox" id="toggle-worked" checked> <span class="swatch" style="background:#dd6b20"></span>Where they worked (' + WORKED.features.length + ')</label>' +
-    '<label><input type="checkbox" id="toggle-third" checked> <span class="swatch" style="background:#805ad5"></span>Third spaces: church, stores, civic (' + THIRD_SPACES.features.length + ')</label>' +
-    '<label><input type="checkbox" id="toggle-rail" checked> <span class="line-swatch" style="background:#2f855a"></span>Rail / streetcar lines (' + RAIL_LINES.features.length + ')</label>' +
+    '<label><input type="checkbox" id="toggle-third" checked> Third spaces: church, stores, civic (' + THIRD_SPACES.features.length + ')</label>' +
+    thirdSpaceSubLegend +
+    '<label><input type="checkbox" id="toggle-rail" checked> Rail / streetcar lines (' + RAIL_LINES.features.length + ')</label>' +
+    railSubLegend +
     '<label><input type="checkbox" id="toggle-sanborn"> <span class="swatch" style="background:#b7791f;border-radius:2px"></span>1911 Sanborn inset: Greek Town block</label>' +
     '<div class="note">Addresses geocoded from the 1909 directory using Salt Lake\'s numbered-street grid -- block-level approximation, not survey-grade. Rail/streetcar routes are schematic waypoint lines, not digitized track alignments. Base map is modern Esri street tiles; no single period map covers the whole valley at this scale, so the 1911 Sanborn sheet is shown only as a downtown inset (its own registration is approximate, hand-fit to this project\'s street grid).</div>';
   L.DomEvent.disableClickPropagation(div);
